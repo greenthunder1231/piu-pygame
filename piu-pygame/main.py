@@ -5,21 +5,18 @@ from pathlib import Path
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 768
 
-# basic_stream = [(0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3), (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1), (0, 2, 0), (0, 2.25, 1), (0, 2.5, 2), (0, 2.75, 3), (0, 3, 4), (0, 3.25, 3), (0, 3.5, 2), (0, 3.75, 1)]
+basic_stream = [(0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3), (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1), (0, 2, 0), (0, 2.25, 1), (0, 2.5, 2), (0, 2.75, 3), (0, 3, 4), (0, 3.25, 3), (0, 3.5, 2), (0, 3.75, 1)]
 
-# basic_stream_mult = basic_stream * 8
+basic_stream_mult = basic_stream * 8
 
-# extended_stream = []
+extended_stream = []
 
-# ct = -1
-# for i in basic_stream_mult:
-#     if i[1] == 0:
-#         ct += 1
-#     lis = (ct, i[1], i[2])
-#     print(lis)
-#     extended_stream.append(lis)
-
-# print(extended_stream)
+ct = -1
+for i in basic_stream_mult:
+    if i[1] == 0:
+        ct += 1
+    lis = (ct, i[1], i[2])
+    extended_stream.append(lis)
 
 streamtest = []
 for i in range(8):
@@ -29,8 +26,23 @@ for i in range(8):
     if int(b) == b:
         streamtest.append((m, b, 1))
 
-print(streamtest)
-print(len(streamtest) == len(set(streamtest)))
+def extend(stream: list, n: int) -> list:
+    ct = -1
+    new = []
+    stream = stream * 8
+    for i in stream:
+        if i[1] == 0:
+            ct += 1
+        lis = (ct, i[1], i[2])
+        new.append(lis)
+    return new
+
+streamm = [
+    (0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3),
+    (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1),
+    (0, 2, 0), (0, 2.25, 3), (0, 2.5, 1), (0, 2.75, 4),
+    (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2)
+]
 
 testing_beatmaps = {
     "single": {
@@ -40,7 +52,7 @@ testing_beatmaps = {
             (0, 2, 0), (0, 2.25, 3), (0, 2.5, 1), (0, 2.75, 4),
             (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2)
         ],
-        "extended_stream": streamtest,
+        "extended_stream": extend(streamm, 4),
         "jump": [
             (0, i, 0) for i in range(4)
         ],
@@ -55,29 +67,28 @@ testing_beatmaps = {
     }
 }
 
-def readbeatmap(beatmap):
-    new = []
-    for n in beatmap:
-        new.append((n[1] + 4 * n[0], n[2]))
-    return new
-
 class const:
     def __init__(self, beatmap=None):
         # you can change these
         self.fps = 60 # fps
-        self.startdelay = 4000 # how long it takes from program open to beatmap start
+        self.startdelay = 2000 # how long it takes from program open to beatmap start
         self.scroll = 700 # note scroll speed
         self.autostep = True # automate beatmap
         
         # dont change anything after this
-        self.bpm = 180 # map bpm
-        self.double = True # if beatmap is double or not
+        self.bpm = 220 # map bpm
+        self.double = False # if beatmap is double or not
         if beatmap:
             self.BEATMAP = beatmap
         else:
             self.BEATMAP = testing_beatmaps['single']['extended_stream'] # the actual beatmap
         
-        self.BEATMAP = readbeatmap(self.BEATMAP)
+        new = []
+        for n in self.BEATMAP:
+            val = 1000 * (n[1] + 4 * n[0]) * (60 / self.bpm)
+            new.append((val, n[2]))
+        self.BEATMAP = new
+        del(new)
         
         self.RECEPTORY = 68
         self.KEYS = [pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_g, pygame.K_h, pygame.K_j, pygame.K_k, pygame.K_l, pygame.K_SEMICOLON]
@@ -85,7 +96,7 @@ class const:
         if self.double:
             self.COLUMNX = [((SCREEN_WIDTH - 64)/2) + 64*(i - 5) for i in range(10)]
         else:
-            self.COLUMNX = [((SCREEN_WIDTH - 64)/2) + 64*(i - 2) for i in range(5)]
+            self.COLUMNX = [((SCREEN_WIDTH - 64)/2) + 64*(i - 2.5) for i in range(5)]
 
 CONST = const()
 
@@ -230,7 +241,7 @@ class Note(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=(self.x, self.y))
     
     def update(self, time):
-        timediff = self.note[1] - time
+        timediff = self.note[0] - time
         timediff /= 1000 / CONST.scroll
         self.y = timediff + CONST.RECEPTORY
         if self.y < -64:
@@ -296,7 +307,7 @@ while running:
 
     if CONST.autostep:
         for note in beatmap:
-            notetime = 1000 * (note[0] / 4 + note[1]) * (60 / CONST.bpm)
+            notetime = note[0]
             offset = gametime - notetime
             if offset > 0:
                 keydownevent = pygame.event.Event(pygame.KEYDOWN, key=CONST.KEYS[note[1]])
@@ -319,7 +330,7 @@ while running:
             hit[lane] = 1
             for note in beatmap:
                 if note[1] == lane:
-                    notetime = 1000 * (note[0] / 4 + note[1]) * (60 / CONST.bpm)
+                    notetime = note[0]
                     offset = gametime - notetime
                     if not CONST.autostep:
                         if offset > 250:
@@ -337,7 +348,7 @@ while running:
                             beatmap.remove(note)
     
     for note in beatmap:
-        notetime = 1000 * (note[0] / 4 + note[1]) * (60 / CONST.bpm)
+        notetime = note[0]
         offset = gametime - notetime
         if offset > 250:
             beatmap.remove(note)
@@ -384,7 +395,7 @@ while running:
     pygame.draw.line(screen, (255, 255, 255), (0, CONST.RECEPTORY), (SCREEN_WIDTH, CONST.RECEPTORY))
     pygame.draw.line(screen, (255, 255, 255), (SCREEN_WIDTH/2, 0), (SCREEN_WIDTH/2, SCREEN_HEIGHT))
     
-    txtsurf = monospace.render(f'time: {gametime}\nrwbt: {rawbeat}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
+    txtsurf = monospace.render(f'time: {gametime}\nrwbt: {round(rawbeat, 2)}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
     screen.blit(txtsurf, (0, 0))
 
     # update display
