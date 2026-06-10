@@ -5,28 +5,35 @@ from pathlib import Path
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 768
 
+testing_beatmaps = {
+    "stream": [
+    (0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3),
+    (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1),
+    (0, 2, 0), (0, 2.25, 3), (0, 2.5, 1), (0, 2.75, 4),
+    (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2)
+    ],
+    "jump": [
+        (0, i, 0) for i in range(4)
+    ]
+}
+
 class const:
     def __init__(self, beatmap=None):
         # you can change these
         self.fps = 60 # fps
         self.startdelay = 2000 # how long it takes from program open to beatmap start
         self.scroll = 700 # note scroll speed
+        self.autostep = False # automate steps
         
         # dont change anything after this
-        self.bpm = 60 # map bpm
+        self.bpm = 120 # map bpm
         self.double = True # if beatmap is double or not
         if beatmap:
             self.BEATMAP = beatmap
             if any(i[2] >= 5 for i in self.BEATMAP): # overrides manual double mode if there is a 6th panel or more
                 self.double = True
         else:
-            # if self.double:
-                self.BEATMAP = [ # the actual beatmap
-                (0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3),
-                (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1),
-                (0, 2, 0), (0, 2.25, 3), (0, 2.5, 1), (0, 2.75, 4),
-                (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2)
-                ]
+            self.BEATMAP = testing_beatmaps['jump'] # the actual beatmap
         
         self.RECEPTORY = 68
         self.KEYS = [pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_g, pygame.K_h, pygame.K_j, pygame.K_k, pygame.K_l, pygame.K_SEMICOLON]
@@ -37,52 +44,6 @@ class const:
             self.COLUMNX = [(SCREEN_WIDTH/2) - 160 + (64 * i) for i in range(5)]
 
 CONST = const()
-
-class Receptor(pygame.sprite.Sprite):
-    def __init__(self, x, y, i, normimg, blinkimg, glowimg):
-        super().__init__()
-        self.i = i
-        self.normimg = normimg
-        self.blinkimg = blinkimg
-        self.glowimg = glowimg
-        self.image = pygame.Surface((96, 96), pygame.SRCALPHA).convert_alpha()
-        self.rect = self.image.get_rect(topleft=(x+16, y-16))
-        
-        receptor = self.normimg.copy()
-        self.image.blit(receptor, (16, 16))
-    
-    def update(self, fade, hit):
-        if fade > 0:
-            blink_overlay = self.blinkimg.copy()
-            blink_overlay.set_alpha(int(255 * fade))
-            self.image.blit(blink_overlay, (16, 16))
-        if hit[self.i] > 0:
-            glow_overlay = self.glowimg.copy()
-            glow_overlay.set_alpha(int(255 * hit[self.i]))
-            self.image.blit(glow_overlay, (0, 0))
-
-
-class Note(pygame.sprite.Sprite):
-    def __init__(self, note, noteimg):
-        super().__init__()
-        self.note = note
-        self.x = CONST.COLUMNX[self.note[2]]
-        self.y = SCREEN_HEIGHT
-        self.noteimg = noteimg
-        self.image = self.noteimg.copy()
-        self.rect = self.image.get_rect(topleft=(self.x, self.y))
-    
-    def update(self, time):
-        notetime = 1000 * (self.note[1] * 4 + self.note[0]) * (15 / CONST.bpm)
-        timediff = notetime - time
-        timediff /= 1000 / CONST.scroll
-        self.y = timediff + 85
-        if self.y < -64:
-            self.kill()
-            return
-        if self.y > 1024:
-            return
-        self.rect = self.image.get_rect(topleft=(self.x, self.y))
 
 def judge(offset):
     # negative offset value = early
@@ -194,12 +155,63 @@ def hitnote(group, lane, gametime):
             if -144 < offset < 250:
                 result, combobreak, scoremult = judge(offset)
                 if combobreak:
-                    combo = 0
+                    breakcombo()
                 elif combobreak is False:
                     combo += 1
                 beatmap.remove(note)
-                print(result)
-                break
+                return result, scoremult
+
+def breakcombo():
+    global combo
+    print('combo broken')
+    if combo > 0:
+        combo = 0
+
+class Receptor(pygame.sprite.Sprite):
+    def __init__(self, x, y, i, normimg, blinkimg, glowimg):
+        super().__init__()
+        self.i = i
+        self.normimg = normimg
+        self.blinkimg = blinkimg
+        self.glowimg = glowimg
+        self.image = pygame.Surface((96, 96), pygame.SRCALPHA).convert_alpha()
+        self.rect = self.image.get_rect(topleft=(x+16, y-16))
+        
+        receptor = self.normimg.copy()
+        self.image.blit(receptor, (16, 16))
+    
+    def update(self, fade, hit):
+        if fade > 0:
+            blink_overlay = self.blinkimg.copy()
+            blink_overlay.set_alpha(int(255 * fade))
+            self.image.blit(blink_overlay, (16, 16))
+        if hit[self.i] > 0:
+            glow_overlay = self.glowimg.copy()
+            glow_overlay.set_alpha(int(255 * hit[self.i]))
+            self.image.blit(glow_overlay, (0, 0))
+
+
+class Note(pygame.sprite.Sprite):
+    def __init__(self, note, noteimg):
+        super().__init__()
+        self.note = note
+        self.x = CONST.COLUMNX[self.note[2]]
+        self.y = SCREEN_HEIGHT
+        self.noteimg = noteimg
+        self.image = self.noteimg.copy()
+        self.rect = self.image.get_rect(topleft=(self.x, self.y))
+    
+    def update(self, time):
+        notetime = 1000 * (self.note[1] * 4 + self.note[0]) * (15 / CONST.bpm)
+        timediff = notetime - time
+        timediff /= 1000 / CONST.scroll
+        self.y = timediff + 85
+        if self.y < -64:
+            self.kill()
+            return
+        if self.y > 1024:
+            return
+        self.rect = self.image.get_rect(topleft=(self.x, self.y))
 
 monospace = pygame.font.SysFont('Monospace', 20)
 
@@ -227,8 +239,10 @@ while running:
         hit[i] = hit[i] - dt * 7
         if hit[i] < 0:
             hit[i] = 0
-    # --- 1. Event Handling ---
-    # Pygame captures inputs (keys, mouse clicks, closing windows) as "events"
+
+    result = None
+    scoremult = None
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -237,16 +251,13 @@ while running:
                 lane = CONST.KEYS.index(event.key)
                 if lane < hitlen:
                     hit[lane] = 1
-                    hitnote(notegroup, lane, gametime)
-    
-    # --- 2. Game Logic / State Updates ---
-    # This is where physics, movement, and math happen every frame.
+                    accuracycheck = hitnote(notegroup, lane, gametime)
+                    if accuracycheck:
+                        result, scoremult = accuracycheck
+    if result:
+        print(result)
 
-    # --- 3. Drawing / Rendering ---
-    screen.fill((20, 20, 30))  # Clear the screen with a dark blue color
-    
-    # Draw a static receptor line where items will eventually be hit
-    # pygame.draw.line(screen, (70, 70, 70), (0, 100), (SCREEN_WIDTH, 100), 2)
+    screen.fill((20, 20, 30))
     
     fade = fadecalc(gametime)
     
@@ -267,7 +278,6 @@ while running:
             newrecep = Receptor(x, y, i, lane_normimgs[i], lane_blinkimgs[i], lane_glowimgs[i])
             receptorgroup.add(newrecep)
     for note in beatmap:
-        # pos = (note[0] * 4 + note[1]) * 60 / CONST.bpm - gametime
         newnote = Note(note, lane_notes[note[2]])
         notegroup.add(newnote)
 
@@ -279,13 +289,9 @@ while running:
     txtsurf = monospace.render(f'time: {gametime}\nrwbt: {rawbeat}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
     screen.blit(txtsurf, (0, 0))
 
-    # Swap the back buffer with the front buffer to show the changes on screen
+    # update display
     pygame.display.flip()
-
-    # --- 4. Frame Rate Control ---
-    # Cap the game loop at 60 Frames Per Second (FPS)
     
 
-# Clean up and close the program safely
 pygame.quit()
 sys.exit()
