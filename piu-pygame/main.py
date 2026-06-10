@@ -5,43 +5,87 @@ from pathlib import Path
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 768
 
+# basic_stream = [(0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3), (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1), (0, 2, 0), (0, 2.25, 1), (0, 2.5, 2), (0, 2.75, 3), (0, 3, 4), (0, 3.25, 3), (0, 3.5, 2), (0, 3.75, 1)]
+
+# basic_stream_mult = basic_stream * 8
+
+# extended_stream = []
+
+# ct = -1
+# for i in basic_stream_mult:
+#     if i[1] == 0:
+#         ct += 1
+#     lis = (ct, i[1], i[2])
+#     print(lis)
+#     extended_stream.append(lis)
+
+# print(extended_stream)
+
+streamtest = []
+for i in range(8):
+    b = (i/2)%4
+    m = b // 4
+    streamtest.append((m, b, 0))
+    if int(b) == b:
+        streamtest.append((m, b, 1))
+
+print(streamtest)
+print(len(streamtest) == len(set(streamtest)))
+
 testing_beatmaps = {
-    "stream": [
-    (0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3),
-    (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1),
-    (0, 2, 0), (0, 2.25, 3), (0, 2.5, 1), (0, 2.75, 4),
-    (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2)
-    ],
-    "jump": [
-        (0, i, 0) for i in range(4)
-    ]
+    "single": {
+        "stream": [
+            (0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3),
+            (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1),
+            (0, 2, 0), (0, 2.25, 3), (0, 2.5, 1), (0, 2.75, 4),
+            (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2)
+        ],
+        "extended_stream": streamtest,
+        "jump": [
+            (0, i, 0) for i in range(4)
+        ],
+        "debug": [
+            (0, 0, 0), (1, 0, 1), (2, 0, 2), (3, 0, 3), (4, 0, 4)
+        ]
+    },
+    "double": {
+        "stream": [
+            
+        ]
+    }
 }
+
+def readbeatmap(beatmap):
+    new = []
+    for n in beatmap:
+        new.append((n[1] + 4 * n[0], n[2]))
+    return new
 
 class const:
     def __init__(self, beatmap=None):
         # you can change these
         self.fps = 60 # fps
-        self.startdelay = 2000 # how long it takes from program open to beatmap start
+        self.startdelay = 4000 # how long it takes from program open to beatmap start
         self.scroll = 700 # note scroll speed
-        self.autostep = False # automate steps
+        self.autostep = True # automate beatmap
         
         # dont change anything after this
-        self.bpm = 120 # map bpm
+        self.bpm = 180 # map bpm
         self.double = True # if beatmap is double or not
         if beatmap:
             self.BEATMAP = beatmap
-            if any(i[2] >= 5 for i in self.BEATMAP): # overrides manual double mode if there is a 6th panel or more
-                self.double = True
         else:
-            self.BEATMAP = testing_beatmaps['jump'] # the actual beatmap
+            self.BEATMAP = testing_beatmaps['single']['extended_stream'] # the actual beatmap
+        
+        self.BEATMAP = readbeatmap(self.BEATMAP)
         
         self.RECEPTORY = 68
         self.KEYS = [pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_g, pygame.K_h, pygame.K_j, pygame.K_k, pygame.K_l, pygame.K_SEMICOLON]
         # self.KEYS = [pygame.K_KP_1, pygame.K_KP_7, pygame.K_KP_5, pygame.K_KP_9, pygame.K_KP_3]
         if self.double:
-            self.COLUMNX = [(SCREEN_WIDTH/2) - 288 + (64 * i) for i in range(10)]
+            self.COLUMNX = [((SCREEN_WIDTH - 64)/2) + 64*(i - 5) for i in range(10)]
         else:
-            self.COLUMNX = [(SCREEN_WIDTH/2) - 160 + (64 * i) for i in range(5)]
+            self.COLUMNX = [((SCREEN_WIDTH - 64)/2) + 64*(i - 2) for i in range(5)]
 
 CONST = const()
 
@@ -145,25 +189,8 @@ def fadecalc(t):
     x = max(((CONST.bpm * t) / 60) % 1, 0)
     return (1 - x)**2
 
-def hitnote(group, lane, gametime):
-    global beatmap, combo
-    for n in group:
-        note = n.note
-        if note[2] == lane:
-            notetime = 1000 * (note[1] * 4 + note[0]) * (15 / CONST.bpm)
-            offset = notetime - gametime
-            if -144 < offset < 250:
-                result, combobreak, scoremult = judge(offset)
-                if combobreak:
-                    breakcombo()
-                elif combobreak is False:
-                    combo += 1
-                beatmap.remove(note)
-                return result, scoremult
-
 def breakcombo():
     global combo
-    print('combo broken')
     if combo > 0:
         combo = 0
 
@@ -195,23 +222,41 @@ class Note(pygame.sprite.Sprite):
     def __init__(self, note, noteimg):
         super().__init__()
         self.note = note
-        self.x = CONST.COLUMNX[self.note[2]]
+        self.visible = True
+        self.x = CONST.COLUMNX[self.note[1]] + 32
         self.y = SCREEN_HEIGHT
         self.noteimg = noteimg
         self.image = self.noteimg.copy()
         self.rect = self.image.get_rect(topleft=(self.x, self.y))
     
     def update(self, time):
-        notetime = 1000 * (self.note[1] * 4 + self.note[0]) * (15 / CONST.bpm)
-        timediff = notetime - time
+        timediff = self.note[1] - time
         timediff /= 1000 / CONST.scroll
-        self.y = timediff + 85
+        self.y = timediff + CONST.RECEPTORY
         if self.y < -64:
-            self.kill()
             return
         if self.y > 1024:
             return
         self.rect = self.image.get_rect(topleft=(self.x, self.y))
+
+class Judgement(pygame.sprite.Sprite):
+    def __init__(self, result):
+        super().__init__()
+        self.judgement = judgements[result]
+        self.image = self.judgement.copy().convert_alpha()
+        self.x = 256
+        self.y = 341
+        self.startfade = 1000
+        self.endfade = 1500
+        self.rect = self.image.get_rect(topleft=(self.x, self.y))
+    
+    def update(self, last, time):
+        dt = time - last
+        if dt > self.endfade:
+            self.kill()
+        elif dt > self.startfade:
+            alpha = 255 * ((dt - self.endfade) / (self.startfade - self.endfade))
+            self.image.set_alpha(alpha)
 
 monospace = pygame.font.SysFont('Monospace', 20)
 
@@ -225,7 +270,9 @@ else:
 hit = [0] * hitlen
 combo = 0
 score = 0
+lastjudgetime = None
 
+judgegroup = pygame.sprite.Group()
 notegroup = pygame.sprite.Group()
 receptorgroup = pygame.sprite.Group()
 
@@ -243,19 +290,64 @@ while running:
     result = None
     scoremult = None
 
+    combobreak = None
+    
+    lane = 10
+
+    if CONST.autostep:
+        for note in beatmap:
+            notetime = 1000 * (note[0] / 4 + note[1]) * (60 / CONST.bpm)
+            offset = gametime - notetime
+            if offset > 0:
+                keydownevent = pygame.event.Event(pygame.KEYDOWN, key=CONST.KEYS[note[1]])
+                pygame.event.post(keydownevent)
+                combo += 1
+                result = 0
+                lastjudgetime = gametime
+                newjudge = Judgement(result)
+                judgegroup.empty()
+                judgegroup.add(newjudge)
+                beatmap.remove(note)
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key in CONST.KEYS:
                 lane = CONST.KEYS.index(event.key)
-                if lane < hitlen:
-                    hit[lane] = 1
-                    accuracycheck = hitnote(notegroup, lane, gametime)
-                    if accuracycheck:
-                        result, scoremult = accuracycheck
-    if result:
-        print(result)
+        if lane < hitlen:
+            hit[lane] = 1
+            for note in beatmap:
+                if note[1] == lane:
+                    notetime = 1000 * (note[0] / 4 + note[1]) * (60 / CONST.bpm)
+                    offset = gametime - notetime
+                    if not CONST.autostep:
+                        if offset > 250:
+                            combobreak = True
+                        elif offset > -144:
+                            judgetuple = judge(offset)
+                            if not combobreak:
+                                result, combobreak, scoremult = judgetuple
+                                lastjudgetime = gametime
+                                newjudge = Judgement(result)
+                                judgegroup.empty()
+                                judgegroup.add(newjudge)
+                                if combobreak is False:
+                                    combo += 1
+                            beatmap.remove(note)
+    
+    for note in beatmap:
+        notetime = 1000 * (note[0] / 4 + note[1]) * (60 / CONST.bpm)
+        offset = gametime - notetime
+        if offset > 250:
+            beatmap.remove(note)
+            lastjudgetime = gametime
+            newjudge = Judgement(4)
+            judgegroup.empty()
+            judgegroup.add(newjudge)
+    
+    if combobreak:
+        breakcombo()
 
     screen.fill((20, 20, 30))
     
@@ -267,18 +359,18 @@ while running:
     for i in range(5):
         y = CONST.RECEPTORY
         if CONST.double:
-            x1 = 192 + (i * 64)
-            x2 = 192 + ((i + 5) * 64)
+            x1 = CONST.COLUMNX[i]
+            x2 = CONST.COLUMNX[i + 5]
             newrecep1 = Receptor(x1, y, i, lane_normimgs[i], lane_blinkimgs[i], lane_glowimgs[i])
             newrecep2 = Receptor(x2, y, i + 5, lane_normimgs[i], lane_blinkimgs[i], lane_glowimgs[i])
             receptorgroup.add(newrecep1)
             receptorgroup.add(newrecep2)
         else:
-            x = 352 + (i * 64)
+            x = CONST.COLUMNX[i]
             newrecep = Receptor(x, y, i, lane_normimgs[i], lane_blinkimgs[i], lane_glowimgs[i])
             receptorgroup.add(newrecep)
     for note in beatmap:
-        newnote = Note(note, lane_notes[note[2]])
+        newnote = Note(note, lane_notes[note[1]])
         notegroup.add(newnote)
 
     # rendering
@@ -286,6 +378,12 @@ while running:
     receptorgroup.draw(screen)
     notegroup.update(gametime)
     notegroup.draw(screen)
+    judgegroup.update(lastjudgetime, gametime)
+    judgegroup.draw(screen)
+    
+    pygame.draw.line(screen, (255, 255, 255), (0, CONST.RECEPTORY), (SCREEN_WIDTH, CONST.RECEPTORY))
+    pygame.draw.line(screen, (255, 255, 255), (SCREEN_WIDTH/2, 0), (SCREEN_WIDTH/2, SCREEN_HEIGHT))
+    
     txtsurf = monospace.render(f'time: {gametime}\nrwbt: {rawbeat}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
     screen.blit(txtsurf, (0, 0))
 
