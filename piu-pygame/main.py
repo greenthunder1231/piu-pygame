@@ -49,7 +49,6 @@ testing_beatmaps = {
             (1, 3, 1), (1, 3.25, 2), (1, 3.5, 0), (1, 3.75, 4),
             (2, 0, 0)
         ],
-        "extended_stream": extend(streamm, 2),
         "jump": [
             (0, i, 0) for i in range(4)
         ],
@@ -59,7 +58,15 @@ testing_beatmaps = {
     },
     "double": {
         "stream": [
-            
+            (0, 0, 0), (0, 0.25, 2), (0, 0.5, 1), (0, 0.75, 3),
+            (0, 1, 2), (0, 1.25, 4), (0, 1.5, 3), (0, 1.75, 5),
+            (0, 2, 4), (0, 2.25, 6), (0, 2.5, 5), (0, 2.75, 7),
+            (0, 3, 6), (0, 3.25, 8), (0, 3.5, 7), (0, 3.75, 9),
+            (1, 0, 5), (1, 0.25, 8), (1, 0.5, 7), (1, 0.75, 8),
+            (1, 1, 6), (1, 1.25, 9), (1, 1.5, 5), (1, 1.75, 8),
+            (1, 2, 9), (1, 2.25, 8), (1, 2.5, 5), (1, 2.75, 6),
+            (1, 3, 5), (1, 3.25, 7), (1, 3.5, 6), (1, 3.75, 8),
+            (2, 0, 5)
         ]
     }
 }
@@ -70,16 +77,16 @@ class const:
         self.fps = 60 # fps
         self.startdelay = 4000 # how long it takes from program open to beatmap start
         self.scroll = 700 # note scroll speed
-        self.autostep = False # automate beatmap
+        self.autostep = True # automate beatmap
         self.noteskin = 'default'
         
         # dont change anything after this
-        self.bpm = 120 # map bpm
-        self.double = False # if beatmap is double or not
+        self.bpm = 220 # map bpm
+        self.double = True # if beatmap is double or not
         if beatmap:
             self.BEATMAP = beatmap
         else:
-            self.BEATMAP = testing_beatmaps['single']['stream'] # the actual beatmap
+            self.BEATMAP = testing_beatmaps['double']['stream'] # the actual beatmap
         
         new = []
         for n in self.BEATMAP:
@@ -88,13 +95,14 @@ class const:
         self.BEATMAP = new
         del(new)
         
-        self.RECEPTORY = 68
+        self.RECEPTORY = 70
+        self.JUDGEY = 0.5 * SCREEN_HEIGHT
         self.KEYS = [pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_g, pygame.K_h, pygame.K_j, pygame.K_k, pygame.K_l, pygame.K_SEMICOLON]
         # self.KEYS = [pygame.K_KP_1, pygame.K_KP_7, pygame.K_KP_5, pygame.K_KP_9, pygame.K_KP_3]
         if self.double:
-            self.COLUMNX = [((SCREEN_WIDTH - 64)/2) + 64*(i - 5) for i in range(10)]
+            self.COLUMNX = [(SCREEN_WIDTH / 2) + 64 * (i - 4.5) for i in range(10)]
         else:
-            self.COLUMNX = [((SCREEN_WIDTH - 64)/2) + 64*(i - 2.5) for i in range(5)]
+            self.COLUMNX = [(SCREEN_WIDTH / 2) + 64*(i - 2) for i in range(5)]
 
 CONST = const()
 
@@ -236,7 +244,7 @@ class Receptor(pygame.sprite.Sprite):
         self.blinkimg = blinkimg
         self.glowimg = glowimg
         self.image = pygame.Surface((96, 96), pygame.SRCALPHA).convert_alpha()
-        self.rect = self.image.get_rect(topleft=(x+16, y-16))
+        self.rect = self.image.get_rect(center=(x, y))
         
         receptor = self.normimg.copy()
         self.image.blit(receptor, (16, 16))
@@ -257,35 +265,43 @@ class Note(pygame.sprite.Sprite):
         super().__init__()
         self.note = note
         self.visible = True
-        self.x = CONST.COLUMNX[self.note[1]] + 32
+        self.x = CONST.COLUMNX[self.note[1]]
         self.y = SCREEN_HEIGHT
         self.noteimg = noteimg
+        # self.width = self.noteimg.get_width()
+        self.height = self.noteimg.get_height()
         self.image = self.noteimg.copy()
-        self.rect = self.image.get_rect(topleft=(self.x, self.y))
+        self.rect = self.image.get_rect(center=(self.x, self.y))
     
     def update(self, time):
         timediff = self.note[0] - time
         timediff /= 1000 / CONST.scroll
         self.y = timediff + CONST.RECEPTORY
-        if self.y < -64:
-            return
-        if self.y > 1024:
-            return
-        self.rect = self.image.get_rect(topleft=(self.x, self.y))
+        if self.y < -self.height / 2:
+            self.kill()
+        if self.y > SCREEN_HEIGHT + self.height / 2:
+            self.kill()
+        self.rect = self.image.get_rect(center=(self.x, self.y))
 
 class Judgement(pygame.sprite.Sprite):
     def __init__(self, result):
         super().__init__()
         self.judgement = judgements[result]
+        self.scale = 1
         self.image = self.judgement.copy().convert_alpha()
-        self.x = 256
-        self.y = 341
+        self.width = self.judgement.get_width()
+        self.height = self.judgement.get_height()
+        self.x = SCREEN_WIDTH / 2
+        self.y = CONST.JUDGEY
         self.startfade = 1000
         self.endfade = 1500
-        self.rect = self.image.get_rect(topleft=(self.x, self.y))
+        self.rect = self.image.get_rect(center=(self.x, self.y))
     
     def update(self, last, time):
         dt = time - last
+        self.scale = 1 + 0.15 * max(0, min(1, 1 - dt / (1000 * 0.1)))
+        self.image = pygame.transform.scale_by(self.judgement.convert_alpha(), self.scale)
+        self.rect = self.image.get_rect(center=(self.x, self.y))
         if dt > self.endfade:
             self.kill()
         elif dt > self.startfade:
@@ -409,7 +425,7 @@ while running:
             newrecep = Receptor(x, y, i, lane_normimgs[i], lane_blinkimgs[i], lane_glowimgs[i])
             receptorgroup.add(newrecep)
     for note in beatmap:
-        newnote = Note(note, lane_notes[note[1]])
+        newnote = Note(note, lane_notes[note[1] % 5])
         notegroup.add(newnote)
 
     # rendering
@@ -423,7 +439,7 @@ while running:
     pygame.draw.line(screen, (255, 255, 255), (0, CONST.RECEPTORY), (SCREEN_WIDTH, CONST.RECEPTORY))
     pygame.draw.line(screen, (255, 255, 255), (SCREEN_WIDTH/2, 0), (SCREEN_WIDTH/2, SCREEN_HEIGHT))
     
-    txtsurf = monospace.render(f'time: {gametime}\nrwbt: {round(rawbeat, 2)}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
+    txtsurf = monospace.render(f'time: {gametime}\nbeat: {round(rawbeat % 4, 2)}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
     screen.blit(txtsurf, (0, 0))
 
     # update display
