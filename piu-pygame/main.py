@@ -42,7 +42,12 @@ testing_beatmaps = {
             (0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3),
             (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1),
             (0, 2, 0), (0, 2.25, 3), (0, 2.5, 1), (0, 2.75, 4),
-            (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2)
+            (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2),
+            (1, 0, 0), (1, 0.25, 4), (1, 0.5, 1), (1, 0.75, 3),
+            (1, 1, 0), (1, 1.25, 3), (1, 1.5, 1), (1, 1.75, 4),
+            (1, 2, 0), (1, 2.25, 3), (1, 2.5, 2), (1, 2.75, 4),
+            (1, 3, 1), (1, 3.25, 2), (1, 3.5, 0), (1, 3.75, 4),
+            (2, 0, 0)
         ],
         "extended_stream": extend(streamm, 2),
         "jump": [
@@ -63,7 +68,7 @@ class const:
     def __init__(self, beatmap=None):
         # you can change these
         self.fps = 60 # fps
-        self.startdelay = 2000 # how long it takes from program open to beatmap start
+        self.startdelay = 4000 # how long it takes from program open to beatmap start
         self.scroll = 700 # note scroll speed
         self.autostep = False # automate beatmap
         self.noteskin = 'default'
@@ -426,7 +431,6 @@ while running:
 
 print(totalnotes, judgementlist, maxcombo)
 score = (995000 * (judgementlist[0] + judgementlist[1] * 0.6 + judgementlist[2] * 0.2 + judgementlist[3] * 0.1) / totalnotes) + (5000 * maxcombo / totalnotes)
-print(f'score: {score}')
 
 score = round(score)
 ranklist = ['SSS+', 'SSS', 'SS+', 'SS', 'S+', 'S', 'AAA+', 'AAA', 'AA+', 'AA', 'A+', 'A', 'B', 'C', 'D', 'F']
@@ -438,7 +442,9 @@ for i in range(rank):
         rank = i
         break
 
-print(ranklist[rank])
+rank = ranklist[rank]
+
+print(f'score: {score} rank: {rank}')
 
 pygame.quit()
 sys.exit()
