@@ -18,14 +18,6 @@ for i in basic_stream_mult:
     lis = (ct, i[1], i[2])
     extended_stream.append(lis)
 
-streamtest = []
-for i in range(8):
-    b = (i/2)%4
-    m = b // 4
-    streamtest.append((m, b, 0))
-    if int(b) == b:
-        streamtest.append((m, b, 1))
-
 def extend(stream: list, n: int) -> list:
     ct = -1
     new = []
@@ -52,7 +44,7 @@ testing_beatmaps = {
             (0, 2, 0), (0, 2.25, 3), (0, 2.5, 1), (0, 2.75, 4),
             (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2)
         ],
-        "extended_stream": extend(streamm, 4),
+        "extended_stream": extend(streamm, 2),
         "jump": [
             (0, i, 0) for i in range(4)
         ],
@@ -73,15 +65,16 @@ class const:
         self.fps = 60 # fps
         self.startdelay = 2000 # how long it takes from program open to beatmap start
         self.scroll = 700 # note scroll speed
-        self.autostep = True # automate beatmap
+        self.autostep = False # automate beatmap
+        self.noteskin = 'default'
         
         # dont change anything after this
-        self.bpm = 220 # map bpm
+        self.bpm = 120 # map bpm
         self.double = False # if beatmap is double or not
         if beatmap:
             self.BEATMAP = beatmap
         else:
-            self.BEATMAP = testing_beatmaps['single']['extended_stream'] # the actual beatmap
+            self.BEATMAP = testing_beatmaps['single']['stream'] # the actual beatmap
         
         new = []
         for n in self.BEATMAP:
@@ -151,10 +144,35 @@ clock = pygame.time.Clock()
 
 beatmap = CONST.BEATMAP
 
-receptorpath = str(Path(__file__).parent / 'noteskin/default/receptors.png')
-glowpath = str(Path(__file__).parent / 'noteskin/default/glow.png')
-notepath = str(Path(__file__).parent / 'noteskin/default/notes.png')
-judgepath = str(Path(__file__).parent / 'noteskin/default/judgements.png')
+receptorpath = Path(__file__).parent / f'noteskin/{CONST.noteskin}/receptors.png'
+glowpath = Path(__file__).parent / f'noteskin/{CONST.noteskin}/glow.png'
+notepath = Path(__file__).parent / f'noteskin/{CONST.noteskin}/notes.png'
+judgepath = Path(__file__).parent / f'noteskin/{CONST.noteskin}/judgements.png'
+
+noteskinflag = False
+
+if not receptorpath.is_file():
+    noteskinflag = True
+    receptorpath = Path(__file__).parent / f'noteskin/default/receptors.png'
+if not glowpath.is_file():
+    noteskinflag = True
+    glowpath = Path(__file__).parent / f'noteskin/default/receptors.png'
+if not notepath.is_file():
+    noteskinflag = True
+    notepath = Path(__file__).parent / f'noteskin/default/receptors.png'
+if not judgepath.is_file():
+    noteskinflag = True
+    judgepath = Path(__file__).parent / f'noteskin/default/receptors.png'
+
+if noteskinflag:
+    print(f'Noteskin {CONST.noteskin} not found, reverting to default')
+
+del(noteskinflag)
+
+receptorpath = str(receptorpath)
+glowpath = str(glowpath)
+notepath = str(notepath)
+judgepath = str(judgepath)
 
 allreceptors = extract(receptorpath, 64, 64)
 receptors = allreceptors[:3]
@@ -279,8 +297,10 @@ else:
     hitlen = 5
 
 hit = [0] * hitlen
+totalnotes = len(CONST.BEATMAP)
 combo = 0
-score = 0
+maxcombo = 0
+judgementlist = [0] * len(judgements)
 lastjudgetime = None
 
 judgegroup = pygame.sprite.Group()
@@ -313,11 +333,11 @@ while running:
                 keydownevent = pygame.event.Event(pygame.KEYDOWN, key=CONST.KEYS[note[1]])
                 pygame.event.post(keydownevent)
                 combo += 1
-                result = 0
                 lastjudgetime = gametime
-                newjudge = Judgement(result)
+                newjudge = Judgement(0)
                 judgegroup.empty()
                 judgegroup.add(newjudge)
+                judgementlist[0] += 1
                 beatmap.remove(note)
     
     for event in pygame.event.get():
@@ -328,14 +348,12 @@ while running:
                 lane = CONST.KEYS.index(event.key)
         if lane < hitlen:
             hit[lane] = 1
-            for note in beatmap:
-                if note[1] == lane:
-                    notetime = note[0]
-                    offset = gametime - notetime
-                    if not CONST.autostep:
-                        if offset > 250:
-                            combobreak = True
-                        elif offset > -144:
+            if not CONST.autostep:
+                for note in beatmap:
+                    if note[1] == lane:
+                        notetime = note[0]
+                        offset = gametime - notetime
+                        if -144 < offset < 250:
                             judgetuple = judge(offset)
                             if not combobreak:
                                 result, combobreak, scoremult = judgetuple
@@ -343,19 +361,24 @@ while running:
                                 newjudge = Judgement(result)
                                 judgegroup.empty()
                                 judgegroup.add(newjudge)
+                                judgementlist[result] += 1
                                 if combobreak is False:
                                     combo += 1
                             beatmap.remove(note)
     
+    if combo > maxcombo:
+        maxcombo = combo
     for note in beatmap:
         notetime = note[0]
         offset = gametime - notetime
         if offset > 250:
+            combobreak = True
             beatmap.remove(note)
             lastjudgetime = gametime
             newjudge = Judgement(4)
             judgegroup.empty()
             judgegroup.add(newjudge)
+            judgementlist[4] += 1
     
     if combobreak:
         breakcombo()
@@ -400,7 +423,22 @@ while running:
 
     # update display
     pygame.display.flip()
-    
+
+print(totalnotes, judgementlist, maxcombo)
+score = (995000 * (judgementlist[0] + judgementlist[1] * 0.6 + judgementlist[2] * 0.2 + judgementlist[3] * 0.1) / totalnotes) + (5000 * maxcombo / totalnotes)
+print(f'score: {score}')
+
+score = round(score)
+ranklist = ['SSS+', 'SSS', 'SS+', 'SS', 'S+', 'S', 'AAA+', 'AAA', 'AA+', 'AA', 'A+', 'A', 'B', 'C', 'D', 'F']
+rankscore = [995000, 990000, 985000, 980000, 975000, 970000, 960000, 950000, 925000, 900000, 825000, 750000, 650000, 550000, 450000]
+rank = min(len(ranklist), len(rankscore) + 1) - 1
+
+for i in range(rank):
+    if score > rankscore[i]:
+        rank = i
+        break
+
+print(ranklist[rank])
 
 pygame.quit()
 sys.exit()
