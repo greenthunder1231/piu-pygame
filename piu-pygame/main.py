@@ -1,10 +1,7 @@
 import pygame
 import sys
 from pathlib import Path
-from screeninfo import get_monitors
 from types import SimpleNamespace
-
-import time
 
 # monitorfps = 60
 
@@ -61,7 +58,35 @@ testing_beatmaps = {
             (2, 2, 9), (2, 2.25, 8), (2, 2.5, 5), (2, 2.75, 6),
             (2, 3, 5), (2, 3.25, 7), (2, 3.5, 6), (2, 3.75, 8),
             (3, 0, 5), (3, 0.25, 7), (3, 0.5, 6), (3, 0.75, 9),
-            (3, 1, 8), (3, 1.25, 9)
+            (3, 1, 8), (3, 1.25, 9), (3, 1.5, 7), (3, 1.75, 9),
+            (3, 2, 5), (3, 2.25, 6), (3, 2.5, 5), (3, 2.75, 7),
+            (3, 3, 6), (3, 3.25, 8), (3, 3.5, 6), (3, 3.75, 8),
+            (4, 0, 9), (4, 0.25, 8), (4, 0.5, 7), (4, 0.75, 8),
+            (4, 1, 6), (4, 1.25, 5), (4, 1.5, 4), (4, 1.75, 3),
+            (4, 2, 4), (4, 2.25, 5), (4, 2.5, 3), (4, 2.75, 5),
+            (4, 3, 4), (4, 3.25, 3), (4, 3.5, 2), (4, 3.75, 1),
+            (5, 0, 0), (5, 0.25, 1), (5, 0.5, 0), (5, 0.75, 2),
+            (5, 1, 0), (5, 1.25, 3), (5, 1.5, 0), (5, 1.75, 4),
+            (5, 2, 1), (5, 2.25, 4), (5, 2.5, 2), (5, 2.75, 3),
+            (5, 3, 4), (5, 3.25, 3), (5, 3.5, 1), (5, 3.75, 0),
+            (6, 0, 1), (6, 0.25, 3), (6, 0.5, 2), (6, 0.75, 4),
+            (6, 1, 3), (6, 1.25, 4), (6, 1.5, 0), (6, 1.75, 1),
+            (6, 2, 0), (6, 2.25, 4), (6, 2.5, 1), (6, 2.75, 3),
+            (6, 3, 2), (6, 3.25, 4), (6, 3.5, 2), (6, 3.75, 3),
+            (7, 0, 0), (7, 0.25, 4), (7, 0.5, 0), (7, 0.75, 3),
+            (7, 1, 0), (7, 1.25, 3), (7, 1.5, 1), (7, 1.75, 3),
+            (7, 2, 1), (7, 2.25, 4), (7, 2.5, 1), (7, 2.75, 4),
+            (7, 3, 0), (7, 3.25, 4), (7, 3.5, 1), (7, 3.75, 3),
+            (8, 0, 0), (8, 0.25, 1), (8, 0.5, 2), (8, 0.75, 3),
+            (8, 1, 4), (8, 1.25, 5), (8, 1.5, 6), (8, 1.75, 7),
+            (8, 2, 3), (8, 2, 6),
+            (8, 2.75, 6), (8, 2.75, 7), (8, 2.75, 8),
+            (8, 3.5, 3), (8, 3.5, 5), (8, 3.5, 6),
+            (9, 0, 4), (9, 0, 5), (9, 0.25, 7), (9, 0.25, 8), (9, 0.5, 4), (9, 0.5, 5), (9, 0.75, 6), (9, 0.75, 7),
+            (9, 1, 4), (9, 1, 5), (9, 1.25, 3), (9, 1.25, 6), (9, 1.5, 4), (9, 1.5, 5), (9, 1.75, 6), (9, 1.75, 7),
+            (9, 2, 4), (9, 2, 5), (9, 2.25, 7), (9, 2.25, 8), (9, 2.5, 4), (9, 2.5, 5), (9, 2.75, 6), (9, 2.75, 7),
+            (9, 3, 4), (9, 3, 5), (9, 3.25, 3), (9, 3.25, 6), (9, 3.5, 4), (9, 3.5, 5), (9, 3.75, 7),
+            (10, 0, 3), (10, 0, 6), (10, 0.25, 7), (10, 0.25, 8), (10, 0.5, 3), (10, 0.5, 6), (10, 0.75, 5), (10, 0.75, 7)
         ]
     }
 }
@@ -69,15 +94,15 @@ testing_beatmaps = {
 class _settings:
     def __init__(self):
         # visual
-        self.startdelay = 1500 # how long it takes from open to first beat of beatmap
+        self.startdelay = 5000 # how long it takes from open to first beat of beatmap
         self.scroll = 700 # note scroll speed
         self.autostep = True # automate beatmap
         self.noteskin = '.fallback'
-        self.showsteps = False
+        self.showsteps = True
         
         # sound
         self.volume = SimpleNamespace(hitsound=0.1, song=0.1)
-        self.notesounds = True
+        self.notesounds = False
 
 class _const:
     def __init__(self):
@@ -258,6 +283,23 @@ def breakcombo():
     if combo > 0:
         combo = 0
 
+def canbracket(n1, n2):
+    if n1 == n2:
+        return True
+    n1, n2 = (min(n1, n2), max(n1, n2))
+    n = (n1, n2)
+    if n == (4, 5) or n == (3, 6):
+        return True
+    if n1 > 4:
+        n = (n1 - 5, n2 - 5)
+    validpairs = [
+        (0, 2),
+        (1, 2),
+        (2, 3),
+        (2, 4)
+    ]
+    return n in validpairs
+
 class Receptor(pygame.sprite.Sprite):
     def __init__(self, x, y, i, normimg, blinkimg, glowimg):
         super().__init__()
@@ -342,7 +384,7 @@ class ShowStep(pygame.sprite.Sprite):
             self.y = ([y + 64, y - 64, y, y - 64, y + 64] * 2)[i]
         else:
             self.x = [x - 64, x - 64, x, x + 64, x + 64][i]
-            self.y = [y + 64, y - 64, y, y - 64, y + 64] * 2[i]
+            self.y = [y + 64, y - 64, y, y - 64, y + 64]
         self.rect = self.image.get_rect(center=(self.x, self.y))
         bgsurface = pygame.Surface((64, 64))
         bgsurface.fill((47, 47, 47))
@@ -376,11 +418,34 @@ notegroup = pygame.sprite.Group()
 receptorgroup = pygame.sprite.Group()
 showstepgroup = pygame.sprite.Group()
 
+# volume = pygame.mixer.music.get_volume()
+# pygame.mixer.music.set_volume(0)
+# end = 0
+
+# for i in range(-2,4):
+#     increment = 10 ** (-i)
+#     j = 0
+#     findendrunning = True
+#     while findendrunning:
+#         try:
+#             pygame.mixer.music.play(start=(j + end))
+#         except:
+#             end += j - increment
+#             findendrunning = False
+#         j += increment
+
+# pygame.mixer.music.stop()
+# pygame.mixer.music.set_volume(volume)
+
 while running:
     dt = clock.tick() / 1000
     gametime = pygame.time.get_ticks() - settings.startdelay
     if gametime % 1000 < 10:
-        pygame.mixer.music.play(start=(126.648 + gametime / 1000))
+        try:
+            pygame.mixer.music.play(start=(126.648 + gametime / 1000))
+        except:
+            print('Song ended')
+            break
     rawbeat = (gametime * CONST.BPM) / 60000
     measure = rawbeat // 4
     for i in range(hitlen):
@@ -399,7 +464,7 @@ while running:
         for note in beatmap:
             notetime = note[0]
             offset = gametime - notetime
-            if offset > 0:
+            if 0 < offset < 500:
                 keydownevent = pygame.event.Event(pygame.KEYDOWN, key=CONST.KEYS[note[1]])
                 pygame.event.post(keydownevent)
                 combo += 1
@@ -515,7 +580,6 @@ while running:
     # update display
     pygame.display.flip()
 
-print(totalnotes, judgementlist, maxcombo)
 score = (995000 * (judgementlist[0] + judgementlist[1] * 0.6 + judgementlist[2] * 0.2 + judgementlist[3] * 0.1) / totalnotes) + (5000 * maxcombo / totalnotes)
 
 score = round(score)
@@ -530,7 +594,7 @@ for i in range(rank):
 
 rank = ranklist[rank]
 
-print(f'score: {score} rank: {rank}')
+print(f'score: {score}\nrank: {rank}')
 
 pygame.quit()
 sys.exit()
