@@ -1,174 +1,37 @@
-import pygame
-import sys
-from pathlib import Path
-from types import SimpleNamespace
+# import subprocess
+# import os
+# subprocess.run(['cls' if os.name == 'nt' else 'clear'], shell = True)
 
-# monitorfps = 60
+from modules.imports import *
 
-# for monitor in get_monitors():
-#     if monitor.is_primary:
-#         monitorfps = monitor.frequency
+from modules.autostep import *
+from modules.const import _const
+from modules.files import *
+from modules.gameutils import *
+
+print(bracketpriority(2, 4, 5, 7))
 
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 768
 
-def extend(stream: list, n: int) -> list:
-    ct = -1
-    new = []
-    stream = stream * 8
-    for i in stream:
-        if i[1] == 0:
-            ct += 1
-        lis = (ct, i[1], i[2])
-        new.append(lis)
-    return new
-
-testing_beatmaps = {
-    "single": {
-        "stream": [
-            (0, 0, 0), (0, 0.25, 1), (0, 0.5, 2), (0, 0.75, 3),
-            (0, 1, 4), (0, 1.25, 3), (0, 1.5, 2), (0, 1.75, 1),
-            (0, 2, 0), (0, 2.25, 3), (0, 2.5, 1), (0, 2.75, 4),
-            (0, 3, 2), (0, 3.25, 3), (0, 3.5, 1), (0, 3.75, 2),
-            (1, 0, 0), (1, 0.25, 4), (1, 0.5, 1), (1, 0.75, 3),
-            (1, 1, 0), (1, 1.25, 3), (1, 1.5, 1), (1, 1.75, 4),
-            (1, 2, 0), (1, 2.25, 3), (1, 2.5, 2), (1, 2.75, 4),
-            (1, 3, 1), (1, 3.25, 2), (1, 3.5, 0), (1, 3.75, 4),
-            (2, 0, 0)
-        ],
-        "sync": [
-            (0, i, 0) for i in range(32)
-        ],
-        "debug": [
-            (0, 0, 0), (1, 0, 1), (2, 0, 2), (3, 0, 3), (4, 0, 4)
-        ]
-    },
-    "double": {
-        "paradoxx": [
-            (0, 0, 0), (0, 0.25, 2), (0, 0.5, 1), (0, 0.75, 3),
-            (0, 1, 2), (0, 1.25, 4), (0, 1.5, 3), (0, 1.75, 5),
-            (0, 2, 4), (0, 2.25, 6), (0, 2.5, 5), (0, 2.75, 7),
-            (0, 3, 6), (0, 3.25, 8), (0, 3.5, 7), (0, 3.75, 9),
-            (1, 0, 5), (1, 0.25, 8), (1, 0.5, 7), (1, 0.75, 8),
-            (1, 1, 6), (1, 1.25, 9), (1, 1.5, 5), (1, 1.75, 8),
-            (1, 2, 9), (1, 2.25, 8), (1, 2.5, 5), (1, 2.75, 6),
-            (1, 3, 5), (1, 3.25, 7), (1, 3.5, 6), (1, 3.75, 8),
-            (2, 0, 5), (2, 0.25, 8), (2, 0.5, 7), (2, 0.75, 8),
-            (2, 1, 6), (2, 1.25, 9), (2, 1.5, 5), (2, 1.75, 8),
-            (2, 2, 9), (2, 2.25, 8), (2, 2.5, 5), (2, 2.75, 6),
-            (2, 3, 5), (2, 3.25, 7), (2, 3.5, 6), (2, 3.75, 8),
-            (3, 0, 5), (3, 0.25, 7), (3, 0.5, 6), (3, 0.75, 9),
-            (3, 1, 8), (3, 1.25, 9), (3, 1.5, 7), (3, 1.75, 9),
-            (3, 2, 5), (3, 2.25, 6), (3, 2.5, 5), (3, 2.75, 7),
-            (3, 3, 6), (3, 3.25, 8), (3, 3.5, 6), (3, 3.75, 8),
-            (4, 0, 9), (4, 0.25, 8), (4, 0.5, 7), (4, 0.75, 8),
-            (4, 1, 6), (4, 1.25, 5), (4, 1.5, 4), (4, 1.75, 3),
-            (4, 2, 4), (4, 2.25, 5), (4, 2.5, 3), (4, 2.75, 5),
-            (4, 3, 4), (4, 3.25, 3), (4, 3.5, 2), (4, 3.75, 1),
-            (5, 0, 0), (5, 0.25, 1), (5, 0.5, 0), (5, 0.75, 2),
-            (5, 1, 0), (5, 1.25, 3), (5, 1.5, 0), (5, 1.75, 4),
-            (5, 2, 1), (5, 2.25, 4), (5, 2.5, 2), (5, 2.75, 3),
-            (5, 3, 4), (5, 3.25, 3), (5, 3.5, 1), (5, 3.75, 0),
-            (6, 0, 1), (6, 0.25, 3), (6, 0.5, 2), (6, 0.75, 4),
-            (6, 1, 3), (6, 1.25, 4), (6, 1.5, 0), (6, 1.75, 1),
-            (6, 2, 0), (6, 2.25, 4), (6, 2.5, 1), (6, 2.75, 3),
-            (6, 3, 2), (6, 3.25, 4), (6, 3.5, 2), (6, 3.75, 3),
-            (7, 0, 0), (7, 0.25, 4), (7, 0.5, 0), (7, 0.75, 3),
-            (7, 1, 0), (7, 1.25, 3), (7, 1.5, 1), (7, 1.75, 3),
-            (7, 2, 1), (7, 2.25, 4), (7, 2.5, 1), (7, 2.75, 4),
-            (7, 3, 0), (7, 3.25, 4), (7, 3.5, 1), (7, 3.75, 3),
-            (8, 0, 0), (8, 0.25, 1), (8, 0.5, 2), (8, 0.75, 3),
-            (8, 1, 4), (8, 1.25, 5), (8, 1.5, 6), (8, 1.75, 7),
-            (8, 2, 3), (8, 2, 6),
-            (8, 2.75, 6), (8, 2.75, 7), (8, 2.75, 8),
-            (8, 3.5, 3), (8, 3.5, 5), (8, 3.5, 6),
-            (9, 0, 4), (9, 0, 5), (9, 0.25, 7), (9, 0.25, 8), (9, 0.5, 4), (9, 0.5, 5), (9, 0.75, 6), (9, 0.75, 7),
-            (9, 1, 4), (9, 1, 5), (9, 1.25, 3), (9, 1.25, 6), (9, 1.5, 4), (9, 1.5, 5), (9, 1.75, 6), (9, 1.75, 7),
-            (9, 2, 4), (9, 2, 5), (9, 2.25, 7), (9, 2.25, 8), (9, 2.5, 4), (9, 2.5, 5), (9, 2.75, 6), (9, 2.75, 7),
-            (9, 3, 4), (9, 3, 5), (9, 3.25, 3), (9, 3.25, 6), (9, 3.5, 4), (9, 3.5, 5), (9, 3.75, 7),
-            (10, 0, 3), (10, 0, 6), (10, 0.25, 7), (10, 0.25, 8), (10, 0.5, 3), (10, 0.5, 6), (10, 0.75, 5), (10, 0.75, 7)
-        ]
-    }
-}
-
 class _settings:
     def __init__(self):
         # visual
-        self.startdelay = 5000 # how long it takes from open to first beat of beatmap
+        self.startdelay = 4000 # how long it takes from open to first beat of beatmap
         self.scroll = 700 # note scroll speed
         self.autostep = True # automate beatmap
         self.noteskin = '.fallback'
         self.showsteps = True
+        self.showfoot = True
+        self.outlinefoot = True
+        self.showstepscenter = (WINDOW_WIDTH * 0.5, WINDOW_HEIGHT * 0.85)
         
         # sound
         self.volume = SimpleNamespace(hitsound=0.1, song=0.1)
         self.notesounds = False
 
-class _const:
-    def __init__(self):
-        # map info
-        self.BPM = 220 # map bpm
-        self.OFFSET = -3.376177
-        self.DOUBLE = True # if beatmap is double or not
-        self.BEATMAP = testing_beatmaps['double']['paradoxx'] # the actual beatmap
-        
-        new = []
-        for n in self.BEATMAP:
-            val = 1000 * (n[1] + 4 * n[0]) * (60 / self.BPM)
-            new.append((val, n[2]))
-        self.BEATMAP = new
-        del(new)
-        self.RECEPTORY = 70
-        self.JUDGEY = 0.5 * WINDOW_HEIGHT
-        self.KEYS = [pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_g, pygame.K_h, pygame.K_j, pygame.K_k, pygame.K_l, pygame.K_SEMICOLON]
-        # self.KEYS = [pygame.K_KP_1, pygame.K_KP_7, pygame.K_KP_5, pygame.K_KP_9, pygame.K_KP_3]
-        if self.DOUBLE:
-            self.COLUMNX = [(WINDOW_WIDTH / 2) + 64 * (i - 4.5) for i in range(10)]
-        else:
-            self.COLUMNX = [(WINDOW_WIDTH / 2) + 64*(i - 2) for i in range(5)]
-
 settings = _settings()
 CONST = _const()
-
-def judge(offset):
-    # negative offset value = early
-    judge = 4
-    combobreak = True
-    scoremult = 0
-    if -32 < offset < 96:
-        judge = 0
-        combobreak = False
-        scoremult = 1
-    elif -64 < offset < 150:
-        judge = 1
-        combobreak = False
-        scoremult = 0.6
-    elif -96 < offset < 200:
-        judge = 2
-        combobreak = None
-        scoremult = 0.2
-    elif -144 < offset < 250:
-        judge = 3
-        scoremult = 0.1
-    return judge, combobreak, scoremult
-
-def extract(path, width, height):
-    '''Given a spritesheet, provide all sprites width by height in the spritesheet.'''
-    try:
-        sheet = pygame.image.load(path).convert_alpha()
-    except FileNotFoundError:
-        print(f'Error loading {path}')
-        sys.exit()
-    
-    sheetwidth, sheetheight = sheet.get_size()
-    sprites = []
-
-    for y in range(0, sheetheight, height):
-        for x in range(0, sheetwidth, width):
-            sprite = pygame.Surface((width, height), pygame.SRCALPHA)
-            sprite.blit(sheet, (0, 0), (x, y, width, height))
-            sprites.append(sprite)
-    return sprites
 
 # 1. Initialize all imported pygame modules
 pygame.init()
@@ -180,8 +43,6 @@ pygame.display.set_caption("Stupid It Up Prime")
 # 3. Create a clock object to track and control frame rate
 clock = pygame.time.Clock()
 
-beatmap = CONST.BEATMAP
-
 parentdir = Path(__file__).parent
 
 receptorpath = parentdir / f'noteskin/{settings.noteskin}/receptors.png'
@@ -189,15 +50,23 @@ glowpath = parentdir / f'noteskin/{settings.noteskin}/glow.png'
 notepath = parentdir / f'noteskin/{settings.noteskin}/notes.png'
 judgepath = parentdir / f'noteskin/{settings.noteskin}/judgements.png'
 clappath = parentdir / f'noteskin/{settings.noteskin}/clap.ogg'
+panelpath = parentdir / f'noteskin/{settings.noteskin}/panels'
+footpath = parentdir / f'assets/shoe.png'
+outlinefootpath = parentdir / f'assets/shoe_outline.png'
 
 song = None
 
 for ext in  ['.mp3', '.ogg']:
     songpath = next(parentdir.rglob('*.ogg'), None)
     if songpath:
+        songpath = Path(songpath)
         song = pygame.mixer.music.load(str(songpath))
         pygame.mixer.music.set_volume(settings.volume.song)
         print(f'Song file found: {songpath.name}')
+        beatmappath = songpath.parent / next(parentdir.rglob('*.ogg'), None)
+        if beatmappath:
+            CONST.BEATMAP
+            print(f'Beatmap synced with song file')
         break
 if not songpath:
     print('No song file found.')
@@ -206,18 +75,21 @@ clap = None
 
 noteskinflag = False
 
-if not receptorpath.is_file():
+if not receptorpath.is_file() or noteskinflag:
     noteskinflag = True
     receptorpath = parentdir / f'noteskin/.fallback/receptors.png'
-if not glowpath.is_file():
+if not glowpath.is_file() or noteskinflag:
     noteskinflag = True
     glowpath = parentdir / f'noteskin/.fallback/glow.png'
-if not notepath.is_file():
+if not notepath.is_file() or noteskinflag:
     noteskinflag = True
     notepath = parentdir / f'noteskin/.fallback/notes.png'
-if not judgepath.is_file():
+if not judgepath.is_file() or noteskinflag:
     noteskinflag = True
     judgepath = parentdir / f'noteskin/.fallback/judgements.png'
+if not panelpath.is_dir() or noteskinflag:
+    noteskinflag = True
+    receptorpath = parentdir / f'noteskin/.fallback/receptors.png'
 
 # extra things
 if clappath.is_file():
@@ -227,12 +99,49 @@ if clappath.is_file():
 if noteskinflag:
     print(f'Noteskin {settings.noteskin} does not contain required files, reverting to fallback')
 
+noteskinflag = False
+
+if settings.outlinefoot:
+    if outlinefootpath.is_file():
+        footimg = pygame.image.load(outlinefootpath)
+    else:
+        noteskinflag = True
+else:
+    if footpath.is_file():
+        footimg = pygame.image.load(footpath)
+    else:
+        noteskinflag = True
+
+if noteskinflag:
+    print(f'{'Outlined foot' if settings.outlinefoot else 'Foot'} image could not load, switching')
+    try:
+        footimg = pygame.image.load(footpath if settings.outlinefoot else outlinefootpath)
+    except FileNotFoundError:
+        raise FileNotFoundError('No foot in assets folder')
 del(noteskinflag)
+
+try:
+    panels = [
+        pygame.image.load(panelpath / 'panel_ld.png'),
+        pygame.image.load(panelpath / 'panel_lu.png'),
+        pygame.image.load(panelpath / 'panel_cs.png'),
+        pygame.image.load(panelpath / 'panel_ru.png'),
+        pygame.image.load(panelpath / 'panel_rd.png')
+    ]
+except FileNotFoundError:
+    raise FileNotFoundError(f'One or more files not found in {panelpath}\nMake sure panels have the correct names and are .png files.\nPanel names are (in the place that the panel is physically):\npanel_lu.png      panel_ru.png\n         panel_cs.png         \npanel_ld.png      panel_rd.png')
+
+for i in range(len(panels)):
+    if i == 2:
+        panels[i] = pygame.transform.smoothscale(panels[i], (64, 64))
+    else:
+        panels[i] = pygame.transform.smoothscale(panels[i], (64, 6400/83))
 
 receptorpath = str(receptorpath)
 glowpath = str(glowpath)
 notepath = str(notepath)
 judgepath = str(judgepath)
+panelpath = str(panelpath)
 
 allreceptors = extract(receptorpath, 64, 64)
 receptors = allreceptors[:3]
@@ -269,36 +178,9 @@ lane_notes = [
     pygame.transform.flip(notes[1], True, False),
     pygame.transform.flip(notes[0], True, False)
 ]
+footimg = pygame.transform.smoothscale(footimg.convert_alpha(), (23.4, 60))
 
 fade = 0
-def fadecalc(t):
-    if t < 0:
-        return 0
-    t /= 1000
-    x = max(((CONST.BPM * t) / 60) % 1, 0)
-    return (1 - x)**2
-
-def breakcombo():
-    global combo
-    if combo > 0:
-        combo = 0
-
-def canbracket(n1, n2):
-    if n1 == n2:
-        return True
-    n1, n2 = (min(n1, n2), max(n1, n2))
-    n = (n1, n2)
-    if n == (4, 5) or n == (3, 6):
-        return True
-    if n1 > 4:
-        n = (n1 - 5, n2 - 5)
-    validpairs = [
-        (0, 2),
-        (1, 2),
-        (2, 3),
-        (2, 4)
-    ]
-    return n in validpairs
 
 class Receptor(pygame.sprite.Sprite):
     def __init__(self, x, y, i, normimg, blinkimg, glowimg):
@@ -363,7 +245,9 @@ class Judgement(pygame.sprite.Sprite):
     def update(self, last, time):
         dt = time - last
         self.scale = 1 + 0.15 * max(0, min(1, 1 - dt / (1000 * 0.1)))
-        self.image = pygame.transform.scale_by(self.judgement.convert_alpha(), self.scale)
+        self.image = self.judgement.convert_alpha()
+        if self.scale > 1:
+            self.image = pygame.transform.scale_by(self.image, self.scale)
         self.rect = self.image.get_rect(center=(self.x, self.y))
         if dt > self.endfade:
             self.kill()
@@ -372,30 +256,87 @@ class Judgement(pygame.sprite.Sprite):
             self.image.set_alpha(alpha)
 
 class ShowStep(pygame.sprite.Sprite):
-    def __init__(self, x, y, isdouble, i, normimg, glowimg):
+    def __init__(self, i):
         super().__init__()
         self.i = i
         self.brightness = 1
-        self.normimg = normimg
-        self.glowimg = glowimg
-        self.image = pygame.Surface((96, 96), pygame.SRCALPHA).convert_alpha()
-        if isdouble:
-            self.x = [x - 160, x - 160, x - 96, x - 32, x - 32, x + 32, x + 32, x + 96, x + 160, x + 160][i]
-            self.y = ([y + 64, y - 64, y, y - 64, y + 64] * 2)[i]
-        else:
-            self.x = [x - 64, x - 64, x, x + 64, x + 64][i]
-            self.y = [y + 64, y - 64, y, y - 64, y + 64]
+        self.panelimg = panels[self.i % 5]
+        self.width = self.panelimg.get_width()
+        self.height = self.panelimg.get_height()
+        self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA).convert_alpha()
+        xlist = CONST.SHOWSTEPOFFSETX
+        ylist = CONST.SHOWSTEPOFFSETY
+        self.x = settings.showstepscenter[0] + xlist[i % 5]
+        self.y = settings.showstepscenter[1] - ylist[i % 5]
+        if CONST.DOUBLE:
+            self.x += (96 + 64 / 11) * (2 * (i // 5) - 1)
         self.rect = self.image.get_rect(center=(self.x, self.y))
-        bgsurface = pygame.Surface((64, 64))
-        bgsurface.fill((47, 47, 47))
-        self.image.blit(bgsurface, (16, 16))
-        receptor = self.normimg.copy()
-        self.image.blit(receptor, (16, 16))
-    def update(self, hit):
-        if hit[self.i] > 0:
-            glow_overlay = self.glowimg.copy()
-            glow_overlay.set_alpha(int(255 * hit[self.i]))
-            self.image.blit(glow_overlay, (0, 0))
+        self.bgfill = pygame.Surface((self.width, self.height), pygame.SRCALPHA).convert_alpha()
+        self.bgfill.fill((0, 0, 0))
+        self.image.blit(self.bgfill, (0, 0))
+        self.panel = self.panelimg.copy()
+        self.panel.set_alpha(100)
+        self.image.blit(self.panel, (0, 0))
+    def update(self, time, pressed, inputs):
+        self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA).convert_alpha()
+        if pressed[self.i]:
+            if settings.autostep:
+                if pressed[self.i] > time - 60000 / (CONST.BPM * 4):
+                    self.panel.set_alpha(255)
+            else:
+                if inputs[self.i]:
+                    self.panel.set_alpha(255)
+        self.image.blit(self.bgfill, (0, 0))
+        self.image.blit(self.panel, (0, 0))
+
+class ShowFoot(pygame.sprite.Sprite):
+    def __init__(self, x: float, y: float, foot: int):
+        super().__init__()
+        self.foot = foot
+        if not foot:
+            self.footimgog = pygame.transform.flip(footimg, True, False)
+        else:
+            self.footimgog = footimg
+        self.footimg = self.footimgog.copy()
+        self.width = self.footimg.get_width()
+        self.height = self.footimg.get_height()
+        self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA).convert_alpha()
+        self.x = x
+        self.y = y
+        self.image.blit(self.footimg)
+        self.rect = self.image.get_rect(center=(settings.showstepscenter[0] + 17 * (2 * foot - 1), settings.showstepscenter[1]))
+    def update(self, laststep, *panels, step = False):
+        flag = False
+        x = y = theta = None
+        if self.foot == laststep:
+            return
+        else:
+            if len(panels) == 1:
+                b = 0 if panels[0] < 5 else 1
+                x = CONST.SHOWSTEPOFFSETX[panels[0] % 5]
+                y = CONST.SHOWSTEPOFFSETY[panels[0] % 5]
+                theta = 0
+                x += (96 + 64 / 11) * (2 * b - 1)
+            else:
+                brackets = bracketpriority(*panels)
+                if not brackets:
+                    print(f'Cannot bracket panels {panels}')
+                    return
+                curbracket = brackets[self.foot]
+                x, y, theta = CONST.SHOWSTEPFOOTPTS[curbracket]
+                print(curbracket)
+                if isinstance(curbracket, (list, tuple)):
+                    if not curbracket == (3, 6) and not curbracket == (4, 5):
+                        b = 0 if all([i < 5 for i in curbracket]) else 1
+                        x += (96 + 64 / 11) * (2 * b - 1)
+                else:
+                    b = 0 if curbracket < 5 else 1
+                    x += (96 + 64 / 11) * (2 * b - 1)
+            if x is not None and y is not None:
+                self.footimg = pygame.transform.rotate(self.footimgog, theta)
+                self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA).convert_alpha()
+                self.image.blit(self.footimg)
+                self.rect = self.image.get_rect(center=(self.x + x, self.y - y))
 
 monospace = pygame.font.SysFont('Monospace', 20)
 
@@ -406,8 +347,11 @@ if CONST.DOUBLE:
 else:
     hitlen = 5
 
+beatmap = CONST.BEATMAP
+
+laststep = 0
 hit = [0] * hitlen
-totalnotes = len(CONST.BEATMAP)
+totalnotes = len(beatmap)
 combo = 0
 maxcombo = 0
 judgementlist = [0] * len(judgements)
@@ -417,32 +361,24 @@ judgegroup = pygame.sprite.Group()
 notegroup = pygame.sprite.Group()
 receptorgroup = pygame.sprite.Group()
 showstepgroup = pygame.sprite.Group()
+if settings.showfoot:
+    footgroup = pygame.sprite.Group()
+    lfoot = ShowFoot(settings.showstepscenter[0], settings.showstepscenter[1], 0)
+    rfoot = ShowFoot(settings.showstepscenter[0], settings.showstepscenter[1], 1)
+    footgroup.add(lfoot)
+    footgroup.add(rfoot)
 
-# volume = pygame.mixer.music.get_volume()
-# pygame.mixer.music.set_volume(0)
-# end = 0
-
-# for i in range(-2,4):
-#     increment = 10 ** (-i)
-#     j = 0
-#     findendrunning = True
-#     while findendrunning:
-#         try:
-#             pygame.mixer.music.play(start=(j + end))
-#         except:
-#             end += j - increment
-#             findendrunning = False
-#         j += increment
-
-# pygame.mixer.music.stop()
-# pygame.mixer.music.set_volume(volume)
+pressed = [None] * hitlen
+inputs = [False] * hitlen
 
 while running:
+    frameinputs = [False] * hitlen
+    noteshit = []
     dt = clock.tick() / 1000
-    gametime = pygame.time.get_ticks() - settings.startdelay
+    gametime = pygame.time.get_ticks() + CONST.MEASUREOFFSET * 240000 / CONST.BPM - settings.startdelay
     if gametime % 1000 < 10:
         try:
-            pygame.mixer.music.play(start=(126.648 + gametime / 1000))
+            pygame.mixer.music.play(start=(-CONST.OFFSET + gametime / 1000))
         except:
             print('Song ended')
             break
@@ -461,33 +397,49 @@ while running:
     lane = 10
 
     if settings.autostep:
-        for note in beatmap:
+        F = list(filter(lambda x: 0 <= gametime - x[0] <= 500, beatmap))
+        if F:
+            print(F)
+        for note in F:
             notetime = note[0]
             offset = gametime - notetime
-            if 0 < offset < 500:
-                keydownevent = pygame.event.Event(pygame.KEYDOWN, key=CONST.KEYS[note[1]])
-                pygame.event.post(keydownevent)
-                combo += 1
-                lastjudgetime = gametime
-                newjudge = Judgement(0)
-                judgegroup.empty()
-                judgegroup.add(newjudge)
-                judgementlist[0] += 1
-                if settings.notesounds:
-                    clap.play()
-                beatmap.remove(note)
+            pressed[note[1]] = gametime
+            inputs[note[1]] = True
+            frameinputs[note[1]] = True
+            combo += 1
+            lastjudgetime = gametime
+            newjudge = Judgement(0)
+            judgegroup.empty()
+            judgegroup.add(newjudge)
+            judgementlist[0] += 1
+            if settings.notesounds:
+                clap.play()
+            beatmap.remove(note)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+            break
         elif event.type == pygame.KEYDOWN:
-            if event.key in CONST.KEYS:
-                lane = CONST.KEYS.index(event.key)
-        if lane < hitlen:
-            hit[lane] = 1
+            if not settings.autostep:
+                if event.key in CONST.KEYS:
+                    lane = CONST.KEYS.index(event.key)
+                    pressed[lane] = gametime
+                    inputs[lane] = True
+                    frameinputs[lane] = True
+        elif event.type == pygame.KEYUP:
+            if not settings.autostep:
+                if event.key in CONST.KEYS:
+                    inputs[CONST.KEYS.index(event.key)] = False
+
+    for i in range(len(frameinputs)):
+        frameinputsi = frameinputs[i]
+        if i < hitlen and frameinputsi:
+            hit[i] = 1
             if not settings.autostep:
                 for note in beatmap:
-                    if note[1] == lane:
+                    if note[1] == i and not note[1] in noteshit:
+                        noteshit.append(note[1])
                         notetime = note[0]
                         offset = gametime - notetime
                         if -144 < offset < 250:
@@ -520,11 +472,11 @@ while running:
             judgementlist[4] += 1
     
     if combobreak:
-        breakcombo()
+        combo = 0
 
     screen.fill((0, 0, 0))
     
-    fade = fadecalc(gametime)
+    fade = fadecalc(gametime, CONST.BPM)
     
     receptorgroup.empty()
     notegroup.empty()
@@ -540,42 +492,53 @@ while running:
             receptorgroup.add(newrecep1)
             receptorgroup.add(newrecep2)
             if settings.showsteps:
-                newshow1 = ShowStep(WINDOW_WIDTH / 2, WINDOW_HEIGHT * 0.75, True, i, lane_normimgs[i], lane_glowimgs[i])
-                newshow2 = ShowStep(WINDOW_WIDTH / 2, WINDOW_HEIGHT * 0.75, True, i + 5, lane_normimgs[i], lane_glowimgs[i])
+                newshow1 = ShowStep(i)
+                newshow2 = ShowStep(i + 5)
                 showstepgroup.add(newshow1)
                 showstepgroup.add(newshow2)
         else:
             x = CONST.COLUMNX[i]
             newrecep = Receptor(x, y, i, lane_normimgs[i], lane_blinkimgs[i], lane_glowimgs[i])
             receptorgroup.add(newrecep)
+            if settings.showsteps:
+                newshow = ShowStep(i)
+                showstepgroup.add(newshow)
     for note in beatmap:
         newnote = Note(note, lane_notes[note[1] % 5])
         notegroup.add(newnote)
 
     # rendering
+    # print(f'\r{[round(i) if i else -settings.startdelay for i in pressed]}', end = '')
     receptorgroup.update(fade, hit)
     receptorgroup.draw(screen)
     notegroup.update(gametime)
     notegroup.draw(screen)
     judgegroup.update(lastjudgetime, gametime)
     judgegroup.draw(screen)
-    showstepgroup.update(hit)
+    showstepgroup.update(gametime, pressed, inputs)
     if settings.showsteps:
-        if CONST.DOUBLE:
-            frame = pygame.rect.Rect(0, 0, 416, 224)
-            framepadding = pygame.rect.Rect(0, 0, 384, 192)
-            frame.center = (WINDOW_WIDTH / 2, WINDOW_HEIGHT * 0.75)
-            framepadding.center = (WINDOW_WIDTH / 2, WINDOW_HEIGHT * 0.75)
-            pygame.draw.rect(screen, (51, 51, 51), frame)
-            pygame.draw.rect(screen, (41, 41, 41), framepadding)
+        padding = pygame.rect.Rect(0, 0, (CONST.DOUBLE + 1) * (192 + 128 / 11), 192 + (128 / 11))
+        padding.center = settings.showstepscenter
+        pygame.draw.rect(screen, (41, 41, 41), padding)
     showstepgroup.draw(screen)
+    if settings.showfoot:
+        footgroupinput = []
+        for i in range(len(frameinputs)):
+            if frameinputs[i]:
+                footgroupinput.append(i)
+        if footgroupinput:
+            flag = footgroup.update(laststep, *footgroupinput)
+            if not flag:
+                laststep = 1 - laststep
+        footgroup.draw(screen)
     
     # pygame.draw.line(screen, (255, 255, 255), (0, CONST.RECEPTORY), (WINDOW_WIDTH, CONST.RECEPTORY))
     # pygame.draw.line(screen, (255, 255, 255), (WINDOW_WIDTH/2, 0), (WINDOW_WIDTH/2, WINDOW_HEIGHT))
-
     
-    txtsurf = monospace.render(f'time: {gametime}\nbeat: {round(rawbeat % 4, 2)}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
+    txtsurf = monospace.render(f'time: {round(gametime)}\nbeat: {round(rawbeat % 4, 2)}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
     screen.blit(txtsurf, (0, 0))
+    if any(frameinputs):
+        print(''.join(['\N{FULL BLOCK}\N{FULL BLOCK}' if i else '  ' for i in frameinputs]))
 
     # update display
     pygame.display.flip()
