@@ -15,7 +15,10 @@ class _const:
         new = []
         for n in self.BEATMAP:
             val = 1000 * (n[1] + 4 * n[0]) * (60 / self.BPM)
-            new.append((val, n[2]))
+            if len(n) == 4:
+                new.append((val, n[2], n[3] if n[3] else None))
+            else:
+                new.append((val, n[2], None))
         self.BEATMAP = new
         self.RECEPTORY = 70
         self.JUDGEY = 0.5 * self.WINDOW_HEIGHT

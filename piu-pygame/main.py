@@ -17,12 +17,12 @@ WINDOW_HEIGHT = 768
 class _settings:
     def __init__(self):
         # visual
-        self.startdelay = 4000 # how long it takes from open to first beat of beatmap
+        self.startdelay = 8000 # how long it takes from open to first beat of beatmap
         self.scroll = 700 # note scroll speed
         self.autostep = True # automate beatmap
         self.noteskin = '.fallback'
         self.showsteps = True
-        self.showfoot = True
+        self.showfoot = False
         self.outlinefoot = True
         self.showstepscenter = (WINDOW_WIDTH * 0.5, WINDOW_HEIGHT * 0.85)
         
@@ -324,7 +324,7 @@ class ShowFoot(pygame.sprite.Sprite):
                     return
                 curbracket = brackets[self.foot]
                 x, y, theta = CONST.SHOWSTEPFOOTPTS[curbracket]
-                print(curbracket)
+                # print(curbracket)
                 if isinstance(curbracket, (list, tuple)):
                     if not curbracket == (3, 6) and not curbracket == (4, 5):
                         b = 0 if all([i < 5 for i in curbracket]) else 1
@@ -398,8 +398,8 @@ while running:
 
     if settings.autostep:
         F = list(filter(lambda x: 0 <= gametime - x[0] <= 500, beatmap))
-        if F:
-            print(F)
+        # if F:
+        #     print(F)
         for note in F:
             notetime = note[0]
             offset = gametime - notetime
@@ -537,8 +537,8 @@ while running:
     
     txtsurf = monospace.render(f'time: {round(gametime)}\nbeat: {round(rawbeat % 4, 2)}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
     screen.blit(txtsurf, (0, 0))
-    if any(frameinputs):
-        print(''.join(['\N{FULL BLOCK}\N{FULL BLOCK}' if i else '  ' for i in frameinputs]))
+    # if any(frameinputs):
+    #     print('|'.join(['\N{FULL BLOCK}\N{FULL BLOCK}' if i else '  ' for i in frameinputs]))
 
     # update display
     pygame.display.flip()
