@@ -9,15 +9,13 @@ from modules.const import _const
 from modules.files import *
 from modules.gameutils import *
 
-print(bracketpriority(2, 4, 5, 7))
-
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 768
 
 class _settings:
     def __init__(self):
         # visual
-        self.startdelay = 8000 # how long it takes from open to first beat of beatmap
+        self.startdelay = 2000 # how long it takes from open to first beat of beatmap
         self.scroll = 700 # note scroll speed
         self.autostep = True # automate beatmap
         self.noteskin = '.fallback'
@@ -27,7 +25,7 @@ class _settings:
         self.showstepscenter = (WINDOW_WIDTH * 0.5, WINDOW_HEIGHT * 0.85)
         
         # sound
-        self.volume = SimpleNamespace(hitsound=0.1, song=0.1)
+        self.volume = SimpleNamespace(hitsound=0.1, song=1)
         self.notesounds = False
 
 settings = _settings()
@@ -70,6 +68,8 @@ for ext in  ['.mp3', '.ogg']:
         break
 if not songpath:
     print('No song file found.')
+
+print('Loading images and assets.')
 
 clap = None
 
@@ -178,7 +178,32 @@ lane_notes = [
     pygame.transform.flip(notes[1], True, False),
     pygame.transform.flip(notes[0], True, False)
 ]
+lane_holdlines = [
+    notes[4],
+    notes[5],
+    notes[6],
+]
+lane_holdends = [
+    notes[8],
+    notes[9],
+    notes[10],
+    pygame.transform.flip(notes[9], True, False),
+    pygame.transform.flip(notes[8], True, False)
+]
+hold_scales = []
+
+st = pygame.time.get_ticks()
+print('Scaling')
+
+for hold in lane_holdlines:
+    temp = [None]
+    for i in range(1, WINDOW_HEIGHT):
+        temp.append(pygame.transform.smoothscale(hold, (hold.get_width(), i)))
+    hold_scales.append(temp)
 footimg = pygame.transform.smoothscale(footimg.convert_alpha(), (23.4, 60))
+
+et = pygame.time.get_ticks()
+print(f'Done scaling in {et - st}')
 
 fade = 0
 
@@ -206,16 +231,29 @@ class Receptor(pygame.sprite.Sprite):
             self.image.blit(glow_overlay, (0, 0))
 
 class Note(pygame.sprite.Sprite):
-    def __init__(self, note, noteimg):
+    # 39, 23, 32
+    def __init__(self, note: tuple, noteimg, holdlineimg=None, holdendimg=None):
         super().__init__()
         self.note = note
+        if len(self.note) <= 2:
+            self.note = (self.note[0], self.note[1], None)
         self.visible = True
         self.x = CONST.COLUMNX[self.note[1]]
         self.y = WINDOW_HEIGHT
         self.noteimg = noteimg
+        self.holdlineimg = holdlineimg
+        self.holdendimg = holdendimg
         # self.width = self.noteimg.get_width()
         self.height = self.noteimg.get_height()
-        self.image = self.noteimg.copy()
+        if not self.note[2]:
+            self.holdid = 0
+            self.image = self.noteimg.copy()
+        elif self.note[2] == 1:
+            self.holdid = 1
+            self.image = self.noteimg.copy()
+        elif self.note[2] == 2:
+            self.holdid = 2
+            self.image = self.holdendimg.copy()
         self.rect = self.image.get_rect(center=(self.x, self.y))
     
     def update(self, time):
@@ -227,6 +265,10 @@ class Note(pygame.sprite.Sprite):
         if self.y > WINDOW_HEIGHT + self.height / 2:
             self.kill()
         self.rect = self.image.get_rect(center=(self.x, self.y))
+
+class HoldLine(pygame.sprite.Sprite):
+    def __init__(self, lane):
+        pass
 
 class Judgement(pygame.sprite.Sprite):
     def __init__(self, result):
@@ -371,12 +413,19 @@ if settings.showfoot:
 pressed = [None] * hitlen
 inputs = [False] * hitlen
 
+startgametime = pygame.time.get_ticks()
 while running:
     frameinputs = [False] * hitlen
     noteshit = []
     dt = clock.tick() / 1000
-    gametime = pygame.time.get_ticks() + CONST.MEASUREOFFSET * 240000 / CONST.BPM - settings.startdelay
-    if gametime % 1000 < 10:
+    uptime = pygame.time.get_ticks()
+    gametime = uptime - startgametime + CONST.MEASUREOFFSET * 240000 / CONST.BPM - settings.startdelay
+    if not pygame.mixer_music.get_busy():
+        try:
+            pygame.mixer.music.play(start=(-CONST.OFFSET + gametime / 1000))
+        except:
+            break
+    elif uptime % 1000 < 10:
         try:
             pygame.mixer.music.play(start=(-CONST.OFFSET + gametime / 1000))
         except:
@@ -504,7 +553,7 @@ while running:
                 newshow = ShowStep(i)
                 showstepgroup.add(newshow)
     for note in beatmap:
-        newnote = Note(note, lane_notes[note[1] % 5])
+        newnote = Note(note, lane_notes[note[1] % 5], lane_holdlines[2 - abs((note[1] % 5) - 2)], lane_holdends[note[1] % 5])
         notegroup.add(newnote)
 
     # rendering
@@ -535,7 +584,7 @@ while running:
     # pygame.draw.line(screen, (255, 255, 255), (0, CONST.RECEPTORY), (WINDOW_WIDTH, CONST.RECEPTORY))
     # pygame.draw.line(screen, (255, 255, 255), (WINDOW_WIDTH/2, 0), (WINDOW_WIDTH/2, WINDOW_HEIGHT))
     
-    txtsurf = monospace.render(f'time: {round(gametime)}\nbeat: {round(rawbeat % 4, 2)}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
+    txtsurf = monospace.render(f'time: {round(uptime)}\nbeat: {round(rawbeat % 4, 2)}\nmeas: {measure}\ncombo:{combo}', True, (255, 255, 255))
     screen.blit(txtsurf, (0, 0))
     # if any(frameinputs):
     #     print('|'.join(['\N{FULL BLOCK}\N{FULL BLOCK}' if i else '  ' for i in frameinputs]))

@@ -9,7 +9,7 @@ class _const:
         self.WINDOW_HEIGHT = 768
         self.BPM = 220 # map bpm
         self.OFFSET = -3.376177
-        self.MEASUREOFFSET = 112
+        self.MEASUREOFFSET = 126
         self.DOUBLE = True # if beatmap is double or not
         self.BEATMAP = defaultbeatmaps['double']['paradoxx'] # the actual beatmap
         new = []
